@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Collection history MOORA (web smartphone MOORA)
+    match /moora_history/{docId} {
+      // Siapa saja boleh baca (biar history bisa ditampilkan ke semua pengunjung)
+      allow read: if true;
+
+      // Siapa saja boleh menambah data baru (create), TAPI:
+      // - tidak boleh mengubah (update) atau menghapus (delete) data yang sudah ada
+      // - data yang ditambahkan harus sesuai struktur yang diharapkan (mencegah spam data sembarangan)
+      allow create: if
+        request.resource.data.keys().hasAll(['jumlahAlternatif', 'jumlahKriteria', 'rekomendasiNama', 'rekomendasiYi', 'createdAt']) &&
+        request.resource.data.jumlahAlternatif is int &&
+        request.resource.data.jumlahKriteria is int &&
+        request.resource.data.rekomendasiNama is string &&
+        request.resource.data.rekomendasiYi is number;
+
+      allow update, delete: if false;
+    }
+
+    // Collection history SAW / WP / SMART (web smartphone 3 metode)
+    match /saw_wp_smart_history/{docId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll(['metode', 'jumlahAlternatif', 'jumlahKriteria', 'rekomendasiNama', 'rekomendasiVi', 'createdAt']) &&
+        request.resource.data.metode in ['saw', 'wp', 'smart'] &&
+        request.resource.data.jumlahAlternatif is int &&
+        request.resource.data.jumlahKriteria is int &&
+        request.resource.data.rekomendasiNama is string &&
+        request.resource.data.rekomendasiVi is number;
+
+      allow update, delete: if false;
+    }
+
+    // Collection history AHP (web smartphone AHP)
+    match /ahp_history/{docId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll(['jumlahAlternatif', 'jumlahKriteria', 'cr', 'rekomendasiNama', 'rekomendasiVi', 'createdAt']) &&
+        request.resource.data.jumlahAlternatif is int &&
+        request.resource.data.jumlahKriteria is int &&
+        request.resource.data.cr is number &&
+        request.resource.data.rekomendasiNama is string &&
+        request.resource.data.rekomendasiVi is number;
+
+      allow update, delete: if false;
+    }
+
+    // Semua collection lain: ditolak total (default aman)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

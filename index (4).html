@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPK Pemilihan Smartphone Terbaik - Metode AHP</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f9; padding-bottom: 50px; }
+    .card { border-radius: 12px; }
+    .table-responsive { overflow-x: auto; }
+    th { white-space: nowrap; }
+    .best-row { background-color: #d4edda !important; font-weight: 600; }
+    .step-title { border-left: 4px solid #0d6efd; padding-left: 10px; margin-top: 25px; }
+    .badge-jenis-benefit { background-color: #198754; }
+    .badge-jenis-cost { background-color: #dc3545; }
+    input.form-control, select.form-select { min-width: 80px; }
+    input.nama-input { min-width: 150px; }
+    .btn-hapus { padding: 0.15rem 0.5rem; }
+    .cr-ok { color: #198754; font-weight: 600; }
+    .cr-bad { color: #dc3545; font-weight: 600; }
+    .pairwise-table input { width: 80px; }
+    .pairwise-diag { background-color: #e9ecef; }
+  </style>
+</head>
+<body>
+
+<div class="container py-4">
+  <div class="text-center mb-4">
+    <span class="badge bg-secondary mb-2">SPK Tugas Kuliah</span>
+    <h2 class="fw-bold">Sistem Pendukung Keputusan</h2>
+    <h4 class="text-primary">Pemilihan Smartphone Terbaik — Metode AHP</h4>
+    <p class="text-muted mb-0">Analytical Hierarchy Process</p>
+  </div>
+
+  <!-- KRITERIA -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="card-title mb-0">1. Kriteria &amp; Jenis</h5>
+        <button class="btn btn-sm btn-outline-primary" onclick="tambahKriteria()">+ Tambah Kriteria</button>
+      </div>
+      <p class="text-muted small">Bobot kriteria pada AHP <strong>tidak diinput manual</strong> — bobot dihitung otomatis dari perbandingan berpasangan di Langkah 2.</p>
+      <div class="table-responsive mt-3">
+        <table class="table table-bordered table-sm text-center align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Kode</th>
+              <th>Nama Kriteria</th>
+              <th>Jenis</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabel-kriteria"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAIRWISE COMPARISON -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="card-title">2. Matriks Perbandingan Berpasangan Kriteria</h5>
+      <p class="text-muted small mb-1">
+        Isi seberapa penting kriteria <strong>baris</strong> dibanding kriteria <strong>kolom</strong>, menggunakan skala Saaty:
+      </p>
+      <p class="text-muted small">
+        1 = sama penting, 3 = sedikit lebih penting, 5 = lebih penting, 7 = jauh lebih penting, 9 = mutlak lebih penting (nilai 2,4,6,8 = nilai antara).
+        Jika kolom lebih penting dari baris, gunakan nilai pecahan (klik sel dan pilih dari dropdown).
+      </p>
+      <div class="table-responsive mt-3">
+        <table class="table table-bordered table-sm text-center align-middle pairwise-table" id="tabel-pairwise">
+          <thead class="table-light"><tr id="head-pairwise"></tr></thead>
+          <tbody id="body-pairwise"></tbody>
+        </table>
+      </div>
+      <button class="btn btn-sm btn-outline-primary" onclick="hitungBobotAHP()">Hitung Bobot &amp; Cek Konsistensi</button>
+
+      <div id="bobot-area" class="mt-4 d-none">
+        <h6>Hasil Bobot Kriteria (Eigenvector)</h6>
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm text-center">
+            <thead class="table-light"><tr id="head-bobot-hasil"></tr></thead>
+            <tbody id="body-bobot-hasil"></tbody>
+          </table>
+        </div>
+        <p class="mb-1">&lambda;max = <span id="lambda-max">-</span>, CI = <span id="ci-value">-</span>, RI = <span id="ri-value">-</span></p>
+        <p class="mb-0">CR (Consistency Ratio) = <span id="cr-value">-</span>
+          <span id="cr-status" class="ms-2"></span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA ALTERNATIF -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="card-title mb-0">3. Data Alternatif</h5>
+        <button class="btn btn-sm btn-outline-primary" onclick="tambahAlternatif()">+ Tambah Alternatif</button>
+      </div>
+      <div class="table-responsive mt-3">
+        <table class="table table-bordered table-sm text-center align-middle">
+          <thead class="table-light" id="head-data-alternatif"></thead>
+          <tbody id="tabel-data-alternatif"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center mb-4">
+    <button class="btn btn-primary btn-lg" onclick="hitungRanking()">Hitung Ranking</button>
+    <button class="btn btn-outline-secondary btn-lg ms-2" onclick="resetData()">Reset ke Data Awal</button>
+  </div>
+
+  <div id="error-area" class="alert alert-danger d-none"></div>
+
+  <!-- HASIL -->
+  <div id="hasil-area" class="d-none">
+
+    <div class="card shadow-sm mb-4 border-success">
+      <div class="card-body text-center">
+        <h5 class="card-title">Rekomendasi Terbaik</h5>
+        <h3 class="text-success fw-bold mb-0" id="rekomendasi-terbaik">-</h3>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="step-title">Langkah A — Matriks Keputusan (X)</h5>
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm text-center" id="tabel-matriks-x">
+            <thead class="table-light"><tr id="head-matriks-x"></tr></thead>
+            <tbody id="body-matriks-x"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="step-title">Langkah B — Normalisasi Matriks (R)</h5>
+        <p class="text-muted mb-1">Benefit: <code>rij = Xij / Max(Xj)</code></p>
+        <p class="text-muted">Cost: <code>rij = Min(Xj) / Xij</code></p>
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm text-center" id="tabel-normalisasi">
+            <thead class="table-light"><tr id="head-normalisasi"></tr></thead>
+            <tbody id="body-normalisasi"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="step-title">Langkah C — Nilai Preferensi (Vi)</h5>
+        <p class="text-muted"><code>Vi = &Sigma;(Wj &times; rij)</code>, Wj = bobot AHP hasil Langkah 2</p>
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm text-center" id="tabel-v">
+            <thead class="table-light"><tr id="head-v"></tr></thead>
+            <tbody id="body-v"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="step-title">Langkah D — Hasil Perangkingan</h5>
+        <p class="text-muted">Diurutkan berdasarkan nilai Vi tertinggi.</p>
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm text-center">
+            <thead class="table-light"><tr><th>Rank</th><th>Alternatif</th><th>Nilai Vi</th></tr></thead>
+            <tbody id="tabel-ranking"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="card-title mb-0">Riwayat Perhitungan</h5>
+        <button class="btn btn-sm btn-outline-secondary" onclick="muatHistory()">Refresh</button>
+      </div>
+      <p class="text-muted small mb-2">Riwayat ini tersimpan di database dan bisa dilihat oleh siapa saja yang membuka halaman ini.</p>
+      <div id="history-loading" class="text-muted small">Memuat riwayat...</div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle d-none" id="tabel-history-wrap">
+          <thead class="table-light">
+            <tr>
+              <th>Waktu</th>
+              <th>Jumlah Alternatif</th>
+              <th>Jumlah Kriteria</th>
+              <th>CR</th>
+              <th>Rekomendasi Terbaik</th>
+              <th>Nilai Vi</th>
+            </tr>
+          </thead>
+          <tbody id="tabel-history"></tbody>
+        </table>
+      </div>
+      <p class="text-muted small d-none" id="history-empty">Belum ada riwayat perhitungan.</p>
+    </div>
+  </div>
+
+  <p class="text-center text-muted small mt-4">Dibuat dengan Bootstrap 5 — SPK Pemilihan Smartphone (Metode AHP)</p>
+</div>
+
+<script type="module" src="firebase-history.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
